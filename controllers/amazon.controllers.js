@@ -16,7 +16,7 @@ const IpnHandler = require('../helpers/ipnhandler.js');
 const getAmazonMessage=async(req,res)=>{
     try{
         const snsPayload = req.body;
-
+        console.log(snsPayload);
         // Parse SNS payload (if required)
         let parsedPayload;
         try {
