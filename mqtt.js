@@ -68,9 +68,9 @@ class MqttHandler {
             
            flag=true;
             var payload = message.toString(); 
-            console.log(payload); 
+            // console.log(payload); 
         
-            console.log("received hbt")
+            // console.log("received hbt")
                var payload = message.toString();  
               
             payload = payload.replace('*','');
