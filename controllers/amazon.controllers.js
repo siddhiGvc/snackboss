@@ -36,10 +36,10 @@ function storeNotification(rawBody) {
       fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
         if (err) {
           console.error('Error writing to file:', err);
-          return res.status(500).send('Error storing notification.');
+        //   return res.status(500).send('Error storing notification.');
         }
         console.log('Notification stored successfully.');
-        res.status(200).send('Notification stored successfully.');
+        // res.status(200).send('Notification stored successfully.');
       });
     });
   }
@@ -75,7 +75,7 @@ const getAmazonMessage=async(req,res)=>{
         //     res.status(200).send('Notification Received');
         // });
 
-        // res.status(200).json("okay");
+        res.status(200).json("okay");
        
     }
     catch(err){
