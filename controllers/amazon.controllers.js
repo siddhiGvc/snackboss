@@ -18,15 +18,15 @@ const getAmazonMessage=async(req,res)=>{
         const snsPayload = req.body;
         console.log(snsPayload);
         // Parse SNS payload (if required)
-        // let parsedPayload;
-        // try {
-        //     parsedPayload = JSON.parse(snsPayload);
-        // } catch (e) {
-        //     return res.status(400).send('Invalid SNS Payload');
-        // }
+        let parsedPayload;
+        try {
+            parsedPayload = JSON.parse(snsPayload);
+        } catch (e) {
+            return res.status(400).send('Invalid SNS Payload');
+        }
     
         // Validate and process SNS notification
-        IpnHandler(snsPayload, (err, message) => {
+        IpnHandler(parsedPayload, (err, message) => {
             if (err) {
                 console.error('IPN Handler Error:', err.message);
                 return res.status(400).send('Invalid Notification');
