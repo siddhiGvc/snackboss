@@ -1,5 +1,16 @@
 const https = require('https');
 const fs = require('fs');
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+const path = require('path');
+
+var mqttHandler = require('./mqtt');
+var mqttClient = new mqttHandler();
+
+// Import your database and router
+const db = require('./models/index');
+const amazonRouter = require('./routes/amazonRoutes');
 
 // Replace with your SSL certificate and key paths
 const options = {
@@ -7,15 +18,29 @@ const options = {
   cert: fs.readFileSync('./fullchain.pem'),
 };
 
-https.createServer(options, (req, res) => {
-  // Respond to requests
-  if (req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Welcome to Snackboss IoT!');
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
-  }
-}).listen(443, () => {
+// Create an Express app
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json()); // Parse JSON request bodies
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(express.static(path.join(__dirname, 'public')));
+  (async () => {
+    await db.sequelize.sync();
+  })();
+ 
+
+// Default route
+app.get('/', (req, res) => {
+  res.send('Welcome to Snackboss IoT!');
+});
+
+// Add your router
+app.use('/', amazonRouter);
+
+// Start the HTTPS server using the Express app
+https.createServer(options, app).listen(443, () => {
+  mqttClient.connect();
   console.log('Server running at https://snackboss-iot.in/');
 });
