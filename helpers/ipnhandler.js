@@ -38,7 +38,7 @@ function IpnHandler(response, callback) {
         return callback(new Error('Unknown SNS Signature version: ' + response.SignatureVersion));
     }
 
-    var verifier = crypto.createVerify('SHA1');
+    var verifier = crypto.createVerify('SHA256');
 
     signable.forEach(function(key) {
         if (response.hasOwnProperty(key)) {
