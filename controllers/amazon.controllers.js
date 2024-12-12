@@ -14,22 +14,32 @@ const IpnHandler = require('../helpers/ipnhandler.js');
 
 
 
-function storeNotification(notification) {
-    const filePath = './notification.json';
-  
+function storeNotification(rawBody) {
+    
+    // Parse the plain text into JSON
+    const notification = JSON.parse(rawBody);
+
+    // Define the file path
+    const filePath = path.join(__dirname, './notification.json');
+
+    // Read the existing file (if exists) and append the new notification
     fs.readFile(filePath, 'utf8', (err, data) => {
       let notifications = [];
+
       if (!err && data) {
-        notifications = JSON.parse(data); // Parse existing notifications
+        notifications = JSON.parse(data); // Parse existing data
       }
-      notifications.push(notification); // Add new notification
-  
+
+      notifications.push(notification); // Add the new notification
+
+      // Write the updated data back to the file
       fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
         if (err) {
-          console.error('Error storing notification:', err);
-        } else {
-          console.log('Notification stored successfully.');
+          console.error('Error writing to file:', err);
+          return res.status(500).send('Error storing notification.');
         }
+        console.log('Notification stored successfully.');
+        res.status(200).send('Notification stored successfully.');
       });
     });
   }
