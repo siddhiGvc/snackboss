@@ -9,6 +9,7 @@
 
 // var events = require('../helpers/events');
 
+const fs = require('fs');
 const IpnHandler = require('../helpers/ipnhandler.js');
 
 
@@ -17,7 +18,8 @@ const getAmazonMessage=async(req,res)=>{
     try{
         const snsPayload = req.body;
         console.log(req.body);
-        console.log(snsPayload["SubscribeURL"]);
+        // console.log(snsPayload["SubscribeURL"]);
+        storeNotification(snsPayload)
         // // Parse SNS payload (if required)
         // let parsedPayload;
         // try {
@@ -41,7 +43,7 @@ const getAmazonMessage=async(req,res)=>{
         //     res.status(200).send('Notification Received');
         // });
 
-        res.status(200).json("okay");
+        // res.status(200).json("okay");
        
     }
     catch(err){
@@ -49,6 +51,28 @@ const getAmazonMessage=async(req,res)=>{
 
     }
 }
+
+
+function storeNotification(notification) {
+  const filePath = './notification.json';
+
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    let notifications = [];
+    if (!err && data) {
+      notifications = JSON.parse(data); // Parse existing notifications
+    }
+    notifications.push(notification); // Add new notification
+
+    fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
+      if (err) {
+        console.error('Error storing notification:', err);
+      } else {
+        console.log('Notification stored successfully.');
+      }
+    });
+  });
+}
+
 
 
 
