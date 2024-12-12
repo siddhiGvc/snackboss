@@ -42,7 +42,7 @@ class MqttHandler {
         
 
         this.clientmqtt.on('error', (err) => {
-            console.log(err);
+            // console.log(err);
             // this.mqttClient.end();
         });
 
@@ -146,31 +146,7 @@ class MqttHandler {
 
 
 
-
-console.log("Starting Code");
-
-
-        setInterval(()=>{
-            console.log("timer start")
-              if(flag==false)
-              {
-                console.log("Not Received HBT")
-             
-
-                // fs.copyFile(`${process.env.ROUTE}/refund.js`, `${process.env.ROUTE}/xxx.js`, (err) => {
-                //     if (err) throw err;
-                //     console.log('source.txt was copied to destination.txt');
-                //     });
-             }
-             else{
-                console.log(false)
-                flag=false;
-             }
-            
-       },10000)
-
-
-       const mqttHandler=new MqttHandler();
-       mqttHandler.connect();
+    //    const mqttHandler=new MqttHandler();
+    //    mqttHandler.connect();
 
 module.exports=MqttHandler;
