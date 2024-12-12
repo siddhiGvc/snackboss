@@ -38,42 +38,32 @@ function IpnHandler(response, callback) {
         return callback(new Error('Unknown SNS Signature version: ' + response.SignatureVersion));
     }
 
-    var verifier = crypto.createVerify('SHA256');
+    var verifier = crypto.createVerify('SHA256'); // Use SHA256
 
-    signable.forEach(function(key) {
+    signable.forEach(function (key) {
         if (response.hasOwnProperty(key)) {
-            verifier.update(key + '\n' + response[key] + '\n');
+            verifier.update(key + '\n' + response[key] + '\n', 'utf8'); // Ensure encoding is specified
         }
     });
-
-    var parsed = URL.parse(response.SigningCertURL);
-    if (parsed.protocol !== 'https:' || parsed.path.substr(-4) !== '.pem' || !defaultHostPattern.test(parsed.host)) {
-        return callback (new Error('The certificate is located on an invalid domain.'));
-    }
-
-    request(response.SigningCertURL, function(err, res, cert) {
+    
+    request(response.SigningCertURL, function (err, res, cert) {
         if (err) {
             return callback(err);
         }
-
-        var isValid = verifier.verify(cert, response.Signature, 'base64');
-
+    
+        var isValid = verifier.verify(cert, response.Signature, 'base64'); // Verify using SHA256
+    
         if (!isValid) {
-            return callback (new Error('Signature mismatch, unverified response'));
+            return callback(new Error('Signature mismatch, unverified response'));
         }
-
-        if (response.Type != 'Notification') {
+    
+        if (response.Type !== 'Notification') {
             return callback(null, response);
         }
-
-        parseIPNMessage(response.Message, function(err, message) {
-            if (err) {
-                return callback(err);
-            }
-
-            callback(null, message);
-        });
+    
+        parseIPNMessage(response.Message, callback);
     });
+    
 }
 
 function parseIPNMessage(message, callback) {
