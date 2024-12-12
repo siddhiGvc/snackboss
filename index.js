@@ -25,7 +25,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json()); // Parse JSON request bodies
-app.use(bodyParser.json());
+app.use(bodyParser.json({ type: 'text/plain' }));
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use(express.static(path.join(__dirname, 'public')));
   (async () => {
