@@ -54,27 +54,27 @@ const getAmazonMessage=async(req,res)=>{
         // console.log(snsPayload["SubscribeURL"]);
         storeNotification(snsPayload)
         // // Parse SNS payload (if required)
-        // let parsedPayload;
-        // try {
-        //     parsedPayload = JSON.parse(snsPayload);
-        // } catch (e) {
-        //     return res.status(400).send('Invalid SNS Payload');
-        // }
+        let parsedPayload;
+        try {
+            parsedPayload = JSON.parse(snsPayload);
+        } catch (e) {
+            return res.status(400).send('Invalid SNS Payload');
+        }
     
         // // Validate and process SNS notification
-        // IpnHandler(parsedPayload, (err, message) => {
-        //     if (err) {
-        //         console.error('IPN Handler Error:', err.message);
-        //         return res.status(400).send('Invalid Notification');
-        //     }
+        IpnHandler(parsedPayload, (err, message) => {
+            if (err) {
+                console.error('IPN Handler Error:', err.message);
+                return res.status(400).send('Invalid Notification');
+            }
     
-        //     console.log('Processed Message:', message);
+            console.log('Processed Message:', message);
     
-        //     // TODO: Handle your business logic here
-        //     // e.g., update the database, log the transaction, etc.
+            // TODO: Handle your business logic here
+            // e.g., update the database, log the transaction, etc.
     
-        //     res.status(200).send('Notification Received');
-        // });
+            res.status(200).send('Notification Received');
+        });
 
         res.status(200).json("okay");
        
