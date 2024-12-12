@@ -79,6 +79,7 @@ const getAmazonMessage=async(req,res)=>{
        
     }
     catch(err){
+        console.log(err);
         res.status(505).json("Error");
 
     }
