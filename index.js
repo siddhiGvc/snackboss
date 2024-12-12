@@ -34,9 +34,9 @@ app.use(express.static(path.join(__dirname, 'public')));
  
 
 // Default route
-app.get('/', (req, res) => {
-  res.send('Welcome to Snackboss IoT!');
-});
+// app.get('/', (req, res) => {
+//   res.send('Welcome to Snackboss IoT!');
+// });
 
 // Add your router
 app.use('/', amazonRouter);
