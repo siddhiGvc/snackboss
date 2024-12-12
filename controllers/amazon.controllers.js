@@ -31,7 +31,7 @@ function storeNotification(rawBody) {
         notifications = JSON.parse(data); // Parse existing data
       }
 
-      notifications.push({...notification,dateTime:moment().tz('Asia/Kolkata').format('DD-MM-YYYY hh:mm:ss A')); // Add the new notification
+      notifications.push({...notification,dateTime:moment().tz('Asia/Kolkata').format('DD-MM-YYYY hh:mm:ss A')}) // Add the new notification
 
       // Write the updated data back to the file
       fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
