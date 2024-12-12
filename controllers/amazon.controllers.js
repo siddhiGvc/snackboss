@@ -14,6 +14,28 @@ const IpnHandler = require('../helpers/ipnhandler.js');
 
 
 
+function storeNotification(notification) {
+    const filePath = './notification.json';
+  
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      let notifications = [];
+      if (!err && data) {
+        notifications = JSON.parse(data); // Parse existing notifications
+      }
+      notifications.push(notification); // Add new notification
+  
+      fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
+        if (err) {
+          console.error('Error storing notification:', err);
+        } else {
+          console.log('Notification stored successfully.');
+        }
+      });
+    });
+  }
+
+
+
 const getAmazonMessage=async(req,res)=>{
     try{
         const snsPayload = req.body;
@@ -51,36 +73,6 @@ const getAmazonMessage=async(req,res)=>{
 
     }
 }
-
-
-function storeNotification(notification) {
-  const filePath = './notification.json';
-
-  fs.readFile(filePath, 'utf8', (err, data) => {
-    let notifications = [];
-    if (!err && data) {
-      notifications = JSON.parse(data); // Parse existing notifications
-    }
-    notifications.push(notification); // Add new notification
-
-    fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
-      if (err) {
-        console.error('Error storing notification:', err);
-      } else {
-        console.log('Notification stored successfully.');
-      }
-    });
-  });
-}
-
-
-
-
-
-
-
-
-
 
 
 module.exports={getAmazonMessage};
