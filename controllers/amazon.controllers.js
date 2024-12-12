@@ -12,6 +12,7 @@
 const fs = require('fs');
 const IpnHandler = require('../helpers/ipnhandler.js');
 const path = require('path');
+const moment=require('moment');
 
 
 function storeNotification(rawBody) {
@@ -30,7 +31,7 @@ function storeNotification(rawBody) {
         notifications = JSON.parse(data); // Parse existing data
       }
 
-      notifications.push(notification); // Add the new notification
+      notifications.push({...notification,dateTime:moment.now()}); // Add the new notification
 
       // Write the updated data back to the file
       fs.writeFile(filePath, JSON.stringify(notifications, null, 2), (err) => {
