@@ -50,7 +50,7 @@ class MqttHandler {
         this.clientmqtt.on('connect', () => {
           
             // console.log(`mqtt client connected`);
-            this.clientmqtt.subscribe('GVC/VM/SVR');
+            this.clientmqtt.subscribe('GVC/AMAZON/SVR');
         });
 
         // this.clientmqtt.on('connect', function () {
