@@ -1,9 +1,13 @@
-const crypto = require('crypto');
-const https = require('https');
-const url = require('url');
+var crypto 		= require('crypto');
+var request 	= require('request');
+var URL 			= require('url');
+var xml2js 		= require('xml2js')
 
-function IpnHandler(payload, callback) {
-    const requiredFields = [
+function IpnHandler(response, callback) {
+    // console.log("respnse",response.Signature);
+    var defaultHostPattern = /^sns\.[a-zA-Z0-9\-]{3,}\.amazonaws\.com(\.cn)?$/;
+
+    var required = [
         'Message',
         'MessageId',
         'SignatureVersion',
@@ -11,74 +15,135 @@ function IpnHandler(payload, callback) {
         'SigningCertURL',
         'Timestamp',
         'TopicArn',
+        'Type'
+    ];
+
+    var signable = [
+        'Message',
+        'MessageId',
+        'Subject',
+        'SubscribeURL',
+        'Timestamp',
+        'Token',
+        'TopicArn',
         'Type',
     ];
 
-    // Ensure required fields are present
-    for (const field of requiredFields) {
-        if (!payload[field]) {
-            return callback(new Error(`Missing required field: ${field}`));
+    for (var i = 0; i < required.length; i++) {
+        if (!response.hasOwnProperty(required[i])) {
+            return callback(new Error('Missing parameter on SNS response: ' + required[i]));
         }
     }
 
-    // Validate the SigningCertURL
-    const parsedUrl = url.parse(payload.SigningCertURL);
-    const isValidCertURL = parsedUrl.protocol === 'https:' &&
-        parsedUrl.hostname.endsWith('.amazonaws.com') &&
-        parsedUrl.path.endsWith('.pem');
-
-    if (!isValidCertURL) {
-        return callback(new Error('Invalid SigningCertURL'));
+    if (response.SignatureVersion != 1) {
+        return callback(new Error('Unknown SNS Signature version: ' + response.SignatureVersion));
     }
 
-    // Fetch the certificate
-    https.get(payload.SigningCertURL, (res) => {
-        let certData = '';
+    var verifier = crypto.createVerify('sha256');
 
-        res.on('data', (chunk) => {
-            certData += chunk;
-        });
+    signable.forEach(function(key) {
+        if (response.hasOwnProperty(key)) {
+            verifier.update(key + '\n' + response[key] + '\n');
+        }
+    });
 
-        res.on('end', () => {
-            // Verify the Signature
-            const verifier = crypto.createVerify('SHA1');
-            const signableFields = [
-                'Message',
-                'MessageId',
-                'Subject',
-                'SubscribeURL',
-                'Timestamp',
-                'Token',
-                'TopicArn',
-                'Type',
-            ];
+    var parsed = URL.parse(response.SigningCertURL);
+    if (parsed.protocol !== 'https:' || parsed.path.substr(-4) !== '.pem' || !defaultHostPattern.test(parsed.host)) {
+        return callback (new Error('The certificate is located on an invalid domain.'));
+    }
 
-            signableFields.forEach((field) => {
-                if (payload[field]) {
-                    verifier.update(`${field}\n${payload[field]}\n`);
-                }
-            });
+    request(response.SigningCertURL, function(err, res, cert) {
+        if (err) {
+            return callback(err);
+        }
 
-            const isValidSignature = verifier.verify(certData, payload.Signature, 'base64');
-            if (!isValidSignature) {
-                return callback(new Error('Signature verification failed'));
+        var isValid = verifier.verify(cert, response.Signature, 'base64');
+
+        if (!isValid) {
+            return callback (new Error('Signature mismatch, unverified response'));
+        }
+
+        if (response.Type != 'Notification') {
+            return callback(null, response);
+        }
+
+        parseIPNMessage(response.Message, function(err, message) {
+            if (err) {
+                return callback(err);
             }
 
-            // If valid and it's a notification, parse the message
-            if (payload.Type === 'Notification') {
-                try {
-                    const message = JSON.parse(payload.Message);
-                    return callback(null, message);
-                } catch (err) {
-                    return callback(new Error('Failed to parse Message JSON'));
-                }
-            } else {
-                return callback(null, payload);
-            }
+            callback(null, message);
         });
-    }).on('error', (err) => {
-        callback(new Error(`Error fetching SigningCertURL: ${err.message}`));
     });
 }
 
+function parseIPNMessage(message, callback) {
+    message = safeJSONParse(message);
+    if (!isObject(message) || !message.NotificationData) {
+        return callback(null, message);
+    }
+
+    var type = message.NotificationType;
+
+    var xmlKeys = {
+        PaymentRefund: ['RefundNotification', 'RefundDetails'],
+        PaymentCapture: ['CaptureNotification', 'CaptureDetails'],
+        PaymentAuthorize: ['AuthorizationNotification', 'AuthorizationDetails'],
+        OrderReferenceNotification: ['OrderReferenceNotification', 'OrderReference'],
+        BillingAgreementNotification: ['BillingAgreementNotification', 'BillingAgreement']
+    };
+
+    xml2js.parseString(message.NotificationData, { explicitArray: false }, function(err, result) {
+        if (err) {
+            return callback(err);
+        }
+
+        var keys = xmlKeys[type] || [];
+        message.NotificationData = new Response(type, result, keys[0], keys[1]);
+        callback(null, message);
+    });
+}
+
+function Response(method, rawResponse, primaryKey, subKey) {
+    primaryKey = primaryKey || method + 'Response';
+    subKey = subKey || method + 'Result';
+    if (!rawResponse.hasOwnProperty(primaryKey)) {
+        return rawResponse;
+    }
+
+    var _response = rawResponse[primaryKey];
+    var _result = _response[subKey];
+
+    if (_response.ResponseMetadata) {
+        Object.defineProperty(this, 'requestId', {
+            enumerable: false,
+            get: function() {
+                return _response.ResponseMetadata.RequestId;
+            }
+        });
+    }
+
+    return _result;
+}
+
+function safeJSONParse(data) {
+    var parsed;
+    try {
+        parsed = JSON.parse(data);
+    } catch (e) {
+        parsed = data;
+    }
+    return parsed;
+}
+
+function isObject(obj) {
+    return Object.prototype.toString.call(obj) === '[object Object]';
+}
+
+function safeObjectCast(obj) {
+    if (!isObject(obj)) {
+        return {};
+    }
+    return obj;
+}
 module.exports = IpnHandler;

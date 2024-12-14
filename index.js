@@ -24,7 +24,7 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.text()); // Parse JSON request bodies
+app.use(express.text({ type: 'text/plain' }));
 // app.use(bodyParser.json({ type: 'text/plain' }));
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use(express.static(path.join(__dirname, 'public')));
@@ -41,8 +41,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Add your router
 app.use('/', amazonRouter);
 
-// Start the HTTPS server using the Express app
-https.createServer(options, app).listen(443, () => {
+app.listen(443, () => {
+
+  console.log(`App running on port 443...`);
   mqttClient.connect();
-  console.log('Server running at https://snackboss-iot.in/');
 });
+
+// Start the HTTPS server using the Express app
+// https.createServer(options, app).listen(443, () => {
+//   mqttClient.connect();
+//   console.log('Server running at https://snackboss-iot.in/');
+// });

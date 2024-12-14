@@ -1,13 +1,13 @@
 
-// const {sequelize,PaytmPayments,Machine}=require('../models');
-// const mqtt = require('mqtt');
+const {sequelize,AmazonPayments,Machine}=require('../models');
+const mqtt = require('mqtt');
 // const {Op} =require('sequelize');
 
-// const mqttHandler=require('../mqtt');
+const mqttHandler=require('../mqtt');
 const MakeRefund = require('../helpers/amazonRefund');
-// var mqttClient = new mqttHandler();
+var mqttClient = new mqttHandler();
 
-// var events = require('../helpers/events');
+var events = require('../helpers/events');
 
 const fs = require('fs');
 const IpnHandler = require('../helpers/ipnhandler.js');
@@ -49,20 +49,15 @@ function storeNotification(rawBody) {
 
 const getAmazonMessage=async(req,res)=>{
     try{
-        const snsPayload = req.body;
-        console.log(req.body);
-        // console.log(snsPayload["SubscribeURL"]);
-        storeNotification(snsPayload)
-        // // Parse SNS payload (if required)
-        // let parsedPayload;
-        // try {
-        //     parsedPayload = JSON.parse(snsPayload);
-        // } catch (e) {
-        //     return res.status(400).send('Invalid SNS Payload');
-        // }
+      const snsPayload = JSON.parse(req.body); // req.body is plain text, parse it to JSON
+      const message = JSON.parse(snsPayload.Message); // Parse the Message field
+
+      console.log('SNS Message:', message.status.status);
+        storeNotification(req.body);
+     
     
         // // // Validate and process SNS notification
-        // IpnHandler(parsedPayload, (err, message) => {
+        // IpnHandler(snsPayload, (err, message) => {
         //     if (err) {
         //         console.error('IPN Handler Error:', err.message);
         //         return res.status(400).send('Invalid Notification');
@@ -76,62 +71,72 @@ const getAmazonMessage=async(req,res)=>{
         //     res.status(200).send('Notification Received');
         // });
 
-    //     if(req.body.STATUS=="SUCCESS")
-    //         {
+        if(message.status.status=="SUCCESS")
+            {
     
-    //             let command=false;
-    // //            command=mqttClient.getMessage(serial);
-    //             var i=0;
-    //             const interval=setTimeout(()=>{ 
-    //               MakeRefund(req.body.MID,req.body.ORDERID,req.body.TXNID,req.body.TXNAMOUNT,req.body.BANKTXNID,merchantKey)
-    //             },60000)
+                let command=false;
+    //            command=mqttClient.getMessage(serial);
+                var i=0;
+                const interval=setTimeout(()=>{ 
+                  MakeRefund(message.merchantId,message.sellerOrderId,message.storeId,snsPayload.MessageId,message.orderTotalAmount,"no stock",message.merchantStoreId,"ghfvhgfgfdf")
+                },5000)
     
-    //             events.pubsub.on('amazon_success', function(msg,amnt) {
-    //                 // msg = JSON.parse(msg);
-    //                 //console.log(msg);
-    //                 if(msg === req.body.TXNID) {
-    //                   clearInterval(interval);
-    //                   console.log('timer cleared');
-    //                 }
-    //               });
+                events.pubsub.on('amazon_success', function(msg,amnt) {
+                    // msg = JSON.parse(msg);
+                    //console.log(msg);
+                    if(msg === message.sellerOrderId) {
+                      clearInterval(interval);
+                      console.log('timer cleared');
+                    }
+                  });
     
-    //               events.pubsub.on('partialRefund', function(msg,amnt) {
-    //                 // msg = JSON.parse(msg);
-    //                 //console.log(msg);
-    //                 if(msg === req.body.TXNID) {
-    //                     MakeRefund(req.body.MID,req.body.ORDERID,req.body.TXNID,amnt/100,req.body.BANKTXNID,merchantKey)
-    //                     clearInterval(interval);
-    //                     console.log('partial refund Rs-',amnt/100);
-    //                 }
-    //               });
+                  events.pubsub.on('partialRefund', function(msg,amnt) {
+                    // msg = JSON.parse(msg);
+                    //console.log(msg);
+                    if(msg === message.sellerOrderId) {
+                        MakeRefund(message.merchantId,message.sellerOrderId,message.storeId,snsPayload.MessageId,amnt/100,"extra amount paid",message.merchantStoreId,"ghfvhgfgfdf")
+                        clearInterval(interval);
+                        console.log('partial refund Rs-',amnt/100);
+                    }
+                  });
     
     
-    //             //    if(command== true)
-    //             //    {
-    //             //     console.log("cleared");
-    //             //     clearTimeout(interval);
-    //             //    }
+                //    if(command== true)
+                //    {
+                //     console.log("cleared");
+                //     clearTimeout(interval);
+                //    }
+
+
+                const payment = await AmazonPayments.create({
+                  mid:message.merchantId,
+                  amt:message.orderTotalAmount,
+                  orderID:message.sellerOrderId,
+                  txnDate:message.transactionDate,
+                  txnID:message.storeId
+              });
      
              
-    //             var machines = await Machine.findAll({ where: { data4:req.body.MID} });
-    //             // console.log(machines[0].dataValues.serial)
-    //             var serial=machines[0].dataValues.serial;
-    //             var merchantKey = machines[0].dataValues.data3;
-    //             var amount=parseInt(req.body.TXNAMOUNT)*100;
-    //             var message="*UPI,"+amount+','+req.body.TXNID+','+req.body.Masked_customer_mobile_number+"#";
-    //             // var Mqtt = mqtt.connect(`${process.env.BROKER}`, {
-    //             //     username: process.env.USER_NAME,
-    //             //     password: process.env.PASSWORD
-    //             // });
-    //             mqttClient.sendMessage('GVC/AMAZON/' + serial,message);
+                var machines = await Machine.findOne({ where: { data4:message.merchantId} });
+                // console.log(machines[0].dataValues.serial)
+                if(machines){
+                var serial=machines.dataValues.serial;
+                var merchantKey = machines.dataValues.data3;
+                var amount=parseInt(message.orderTotalAmount)*100;
+                var msg="*UPI,"+amount+','+message.sellerOrderId+','+message.transactionDate+"#";
+                // var Mqtt = mqtt.connect(`${process.env.BROKER}`, {
+                //     username: process.env.USER_NAME,
+                //     password: process.env.PASSWORD
+                // });
+                mqttClient.sendMessage('GVC/VM/' + serial,msg);
+                }
                
-               
-    //            // someExternalfunction('GVC/VM/' + serial,message)
-    //             /*
-    //             some external function will in turn call mqtt.publish(topic,message)
-    //             some external function needs to be in mqtt.js only as that has mqtt.client
-    //             */
-    //             }    
+               // someExternalfunction('GVC/VM/' + serial,message)
+                /*
+                some external function will in turn call mqtt.publish(topic,message)
+                some external function needs to be in mqtt.js only as that has mqtt.client
+                */
+                }    
 
         res.status(200).json("okay");
        
